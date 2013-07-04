@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dac4157f_db083e2b",
+        "filename": "arch/arm/mach-tegra/include/mach/tegra_bootargs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 5281
+      },
+      "writtenOn": "2013-07-04T13:11:09Z",
+      "side": 1,
+      "message": "Extra space at end of line",
+      "revId": "b2f899643a0741e1a4a98cce2c65ddb03229cc72",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
