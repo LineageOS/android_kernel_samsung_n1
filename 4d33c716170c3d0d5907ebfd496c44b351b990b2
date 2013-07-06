@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dac4157f_6c761640",
+        "filename": "drivers/cpufreq/cpufreq_interactive.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1057,
+      "author": {
+        "id": 1039
+      },
+      "writtenOn": "2013-07-06T23:08:44Z",
+      "side": 1,
+      "message": "you missed a rename here\n\ndont fix it, i will do a proper single patch",
+      "revId": "4d33c716170c3d0d5907ebfd496c44b351b990b2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
