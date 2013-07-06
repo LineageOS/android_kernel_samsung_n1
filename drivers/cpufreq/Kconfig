@@ -183,6 +183,14 @@ config CPU_FREQ_GOV_INTERACTIVE
 
 	  If in doubt, say N.
 
+config CORE1_DOWN
+	bool "Core 1 down in 'interactive' governor"
+	depends on CPU_FREQ_GOV_INTERACTIVE
+	default n
+	help
+	  Bring down Core 1 in 'interactive' governor on early suspend
+	  NEEDS REVISIT!
+
 config CPU_FREQ_GOV_CONSERVATIVE
 	tristate "'conservative' cpufreq governor"
 	depends on CPU_FREQ
