@@ -855,39 +855,32 @@ static struct attribute_group interactive_attr_group = {
 	.name = "interactive",
 };
 
-static void interactivey_suspend(int suspend)
+
+#ifdef CONFIG_CPU_SUSPEND_CORE
+static void interactively_suspend(int suspend)
 {
 	if (!suspend) {
 		if (num_online_cpus() < 2)
 			cpu_up(1);
-	}
-	else
-	{
+	} else {
 		if (num_online_cpus() > 1)
 			cpu_down(1);
 	}
-
-	printk(KERN_DEBUG "%s: [ardatdat]suspend=%d \n",
-		__func__, suspend);
-	printk(KERN_DEBUG "%s: [ardatdat]num_online_cpus()=%d \n",
-		__func__, num_online_cpus());
 }
-
-static void interactivey_early_suspend(struct early_suspend *handler) {
-	interactivey_suspend(1);
+static void interactively_early_suspend(struct early_suspend *handler) {
+	interactively_suspend(1);
 }
-
-static void interactivey_late_resume(struct early_suspend *handler) {
-	interactivey_suspend(0);
+static void interactively_late_resume(struct early_suspend *handler) {
+	interactively_suspend(0);
 }
-
-static struct early_suspend interactivey_power_suspend = {
-        .suspend = interactivey_early_suspend,
-        .resume = interactivey_late_resume,
+static struct early_suspend interactively_power_suspend = {
+        .suspend = interactively_early_suspend,
+        .resume = interactively_late_resume,
 #ifdef CONFIG_MACH_HERO
 	.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1,
 #endif
 };
+#endif /* CONFIG_CPU_SUSPEND_CORE */
 
 static int cpufreq_interactive_idle_notifier(struct notifier_block *nb,
 					     unsigned long val,
@@ -1055,7 +1048,9 @@ static int __init cpufreq_interactive_init(void)
 	spin_lock_init(&down_cpumask_lock);
 	mutex_init(&set_speed_lock);
 
-	register_early_suspend(&interactivey_power_suspend);
+#ifdef CONFIG_CPU_SUSPEND_CORE
+	register_early_suspend(&interactively_power_suspend);
+#endif
 
 	INIT_WORK(&inputopen.inputopen_work, cpufreq_interactive_input_open);
 	return cpufreq_register_governor(&cpufreq_gov_interactive);
@@ -1074,6 +1069,9 @@ module_init(cpufreq_interactive_init);
 static void __exit cpufreq_interactive_exit(void)
 {
 	cpufreq_unregister_governor(&cpufreq_gov_interactive);
+#ifdef CONFIG_CPU_SUSPEND_CORE
+	unregister_early_suspend(&interactively_power_suspend);
+#endif
 	kthread_stop(up_task);
 	put_task_struct(up_task);
 	destroy_workqueue(down_wq);

@@ -22,6 +22,7 @@
 #include <linux/tick.h>
 #include <linux/ktime.h>
 #include <linux/sched.h>
+#include <linux/earlysuspend.h>
 
 /*
  * dbs is used in this file as a shortform for demandbased switching
@@ -710,8 +711,31 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 	return 0;
 }
 
+#ifdef CONFIG_CPU_SUSPEND_CORE
+static void cpufreq_ondemand_suspend(int suspend) {
+	if (!suspend) {
+		if (num_online_cpus() < 2)
+			cpu_up(1);
+	} else {
+		if (num_online_cpus() >= 2)
+			cpu_down(1);
+	}
+}
+static void cpufreq_ondemand_early_suspend(struct early_suspend *handler) {
+	cpufreq_ondemand_suspend(1);
+}
+static void cpufreq_ondemand_late_resume(struct early_suspend *handler) {
+	cpufreq_ondemand_suspend(0);
+}
+static struct early_suspend cpufreq_ondemand_power_suspend = {
+	.suspend = cpufreq_ondemand_early_suspend,
+	.resume = cpufreq_ondemand_late_resume,
+};
+#endif /* CONFIG_CPU_SUSPEND_CORE */
+
 static int __init cpufreq_gov_dbs_init(void)
 {
+	int ret = 0;
 	cputime64_t wall;
 	u64 idle_time;
 	int cpu = get_cpu();
@@ -735,12 +759,20 @@ static int __init cpufreq_gov_dbs_init(void)
 			MIN_SAMPLING_RATE_RATIO * jiffies_to_usecs(10);
 	}
 
-	return cpufreq_register_governor(&cpufreq_gov_ondemand);
+	ret = cpufreq_register_governor(&cpufreq_gov_ondemand);
+#ifdef CONFIG_CPU_SUSPEND_CORE
+	if (ret == 0)
+		register_early_suspend(&cpufreq_ondemand_power_suspend);
+#endif
+	return ret;
 }
 
 static void __exit cpufreq_gov_dbs_exit(void)
 {
 	cpufreq_unregister_governor(&cpufreq_gov_ondemand);
+#ifdef CONFIG_CPU_SUSPEND_CORE
+	unregister_early_suspend(&cpufreq_ondemand_power_suspend);
+#endif
 }
 
 
