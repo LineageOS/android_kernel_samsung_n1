@@ -206,6 +206,14 @@ config CPU_FREQ_GOV_CONSERVATIVE
 
 	  If in doubt, say N.
 
+config CPU_FREQ_SYNC_GOVERNORS
+	bool "Apply governors across the two CPU cores"
+	depends on CPU_FREQ
+	default y if CPU_FREQ
+	help
+	  Allow compatibility with CM CPU Performances settings which only
+	  set cpu governor and frequencies on the first cpu core
+
 config CPU_SUSPEND_CORE
 	bool "Disable Second Core (1) on suspend"
 	depends on CPU_FREQ

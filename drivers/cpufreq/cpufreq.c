@@ -59,6 +59,10 @@ int cpuvoltage[FREQCOUNT] = { 1200, 1150, 1125, 1050, 1000, 975, 900, 825, 775, 
 
 int cpuuvoffset[FREQCOUNT] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
+/* Sync or not governor and max freq scale on second core */
+static int sync_cores_scaling = 0;
+static void cpufreq_sync_cores(struct cpufreq_policy *policy, bool store);
+
 #ifdef __CPUFREQ_KOBJ_DEL_DEADLOCK_FIX
 static DEFINE_PER_CPU(struct mutex, cpufreq_remove_mutex);
 #endif
@@ -442,6 +446,9 @@ static ssize_t store_##file_name					\
 	ret = __cpufreq_set_policy(policy, &new_policy);		\
 	policy->user_policy.object = new_policy.object;			\
 									\
+	if (sync_cores_scaling)						\
+                cpufreq_sync_cores(policy, false);			\
+									\
 	return ret ? ret : count;					\
 }
 
@@ -476,6 +483,44 @@ static ssize_t show_scaling_governor(struct cpufreq_policy *policy, char *buf)
 	return -EINVAL;
 }
 
+static void cpufreq_sync_cores(struct cpufreq_policy *policy, bool store)
+{
+	char freq[16], governor[16];
+	int alt_core, len, was_off;
+	struct cpufreq_policy new_pol, *alt_pol;
+
+	alt_core = policy->cpu ? 0 : 1;
+	was_off = !cpu_online(alt_core);
+	if (was_off)
+		cpu_up(alt_core);
+
+	if(!cpufreq_get_policy(&new_pol, alt_core)) {
+
+		alt_pol = cpufreq_cpu_get(alt_core);
+		if(alt_pol) {
+			cpufreq_parse_governor(governor, &new_pol.policy,
+				&new_pol.governor);
+			alt_pol->user_policy.policy = alt_pol->policy;
+			alt_pol->user_policy.governor = alt_pol->governor;
+			alt_pol->user_policy.min = policy->min;
+			alt_pol->user_policy.max = policy->max;
+			__cpufreq_set_policy(alt_pol, &new_pol);
+
+			/* store via sysfs function to keep normal behavior */
+			if (store) {
+				len = snprintf(freq, sizeof(freq), "%15d", policy->min);
+				store_scaling_min_freq(alt_pol, &freq[0], len);
+				len = snprintf(freq, sizeof(freq), "%15d", policy->max);
+				store_scaling_max_freq(alt_pol, &freq[0], len);
+			}
+
+			cpufreq_cpu_put(alt_pol);
+		}
+	}
+
+	if (was_off)
+		cpu_down(alt_core);
+}
 
 /**
  * store_scaling_governor - store policy for the specified CPU
@@ -488,7 +533,7 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 	struct cpufreq_policy new_policy;
 	char *envp[3];
 	char buf1[64];
-	char buf2[64];
+	char buf2[16];
 
 	ret = cpufreq_get_policy(&new_policy, policy->cpu);
 	if (ret)
@@ -508,6 +553,9 @@ static ssize_t store_scaling_governor(struct cpufreq_policy *policy,
 
 	policy->user_policy.policy = policy->policy;
 	policy->user_policy.governor = policy->governor;
+
+	if (sync_cores_scaling)
+		cpufreq_sync_cores(policy, true);
 
 	snprintf(buf1, sizeof(buf1), "GOV=%s", policy->governor->name);
 	snprintf(buf2, sizeof(buf2), "CPU=%u", policy->cpu);
@@ -2227,6 +2275,10 @@ static int __init cpufreq_core_init(void)
 	rc = pm_qos_add_notifier(PM_QOS_CPU_FREQ_MAX,
 				 &max_freq_notifier);
 	BUG_ON(rc);
+
+#ifdef CONFIG_CPU_FREQ_SYNC_GOVERNORS
+	sync_cores_scaling = 1;
+#endif
 
 #ifdef CONFIG_CPU_SUSPEND_CORE
 	register_early_suspend(&cpufreq_early_suspend);
