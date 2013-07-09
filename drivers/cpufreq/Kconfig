@@ -206,6 +206,17 @@ config CPU_FREQ_GOV_CONSERVATIVE
 
 	  If in doubt, say N.
 
+config CPU_FREQ_SYNC_SCALING
+	bool "Apply governor scaling to the two CPU cores"
+	depends on CPU_FREQ
+	default y if CPU_FREQ
+	help
+	  Allow compatibility with CM CPU Performances settings which only
+	  set cpu governor and min/max frequencies on the first cpu core
+
+	  If Y, changing scaling of a core via sysfs will also update
+	  settings for the second one.
+
 config CPU_SUSPEND_CORE
 	bool "Disable Second Core (1) on suspend"
 	depends on CPU_FREQ
